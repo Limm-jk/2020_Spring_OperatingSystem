@@ -28,7 +28,7 @@ void *clk_W(void *arg);
 
 int mem[5]; // memory arr
 int clk_arr[5];
-int clk_count = 0
+int clk_count = 0;
 int level = 0; // game level
 int game_status = 0;
 
@@ -36,16 +36,15 @@ sem_t input;
 sem_t memory;
 
 int main(void){
-    
+    int end_signal=5; 
     init();
-
     // init Thread
     pthread_t pt[5];
-    int status;
-
     sem_init(&input, 0, 0);
     sem_init(&memory, 0, 0);
-
+	
+    start();
+   
     if(pthread_create(&pt[0],NULL,Memorize,NULL)){
 		printf("Set memory fail");
 	}
@@ -62,45 +61,45 @@ int main(void){
 		printf("White button fail");
 	}
 
-    pthread_join(pt[0], NULL); 
+    if(pthread_join(pt[0], (void **)&end_signal) == end_signal) return 0; 
+    //0번스레드, 즉 memorize함수가 종료되면 프로그램 종료
+
+    //버튼
 	pthread_join(pt[1], NULL);
 	pthread_join(pt[2], NULL);
 	pthread_join(pt[3], NULL);
     pthread_join(pt[4], NULL);
-
-
-
 }
 
-void Memorize(void){
-
-    start();
-
+void *Memorize(void *arg){
     while(level < 5){
         level++;
+	    clk_count = 0;
         srand(time(NULL));
         for(int i = 0; i<level; i++){
             mem[i] = (rand() % 3) + 1;
             switch(mem[i]){
                 case 1:
                     digitalWrite(LED_R, 1);
-	                delay(250);
+	                delay(500);
 	                digitalWrite(LED_R, 0);
                     break;
                 case 2:
                     digitalWrite(LED_Y, 1);
-	                delay(250);
+	                delay(500);
 	                digitalWrite(LED_Y, 0);
                     break;
                 case 3:
                     digitalWrite(LED_G, 1);
-	                delay(250);
+	                delay(500);
 	                digitalWrite(LED_G, 0);
                     break;
             }
+	    delay(200);
         }
         sem_post(&input);
         sem_wait(&memory);
+        
         if(game_status){
             break;
         }
@@ -113,11 +112,11 @@ void Memorize(void){
     }
 }
 
-void clk_R(void){
+void *clk_R(void *arg){
     int val;
     while(1){
-        sem_getvalue(&input, &val)
-        if(digitalRead(SW_R) == 0 & sem_getvalue != 0){
+        sem_getvalue(&input, &val);
+        if(digitalRead(SW_R) == 0 & val != 0){
             digitalWrite(LED_R, 1);
             if(clk_count < level){
                 clk_arr[clk_count] = 1;
@@ -128,11 +127,11 @@ void clk_R(void){
         }
     }
 }
-void clk_Y(void){
+void *clk_Y(void *arg){
     int val;
     while(1){
-        sem_getvalue(&input, &val)
-        if(digitalRead(SW_Y) == 0 & sem_getvalue != 0){
+        sem_getvalue(&input, &val);
+        if(digitalRead(SW_Y) == 0 & val != 0){
             digitalWrite(LED_Y, 1);
             if(clk_count < level){
                 clk_arr[clk_count] = 2;
@@ -143,11 +142,11 @@ void clk_Y(void){
         }
     }
 }
-void clk_G(void){
+void *clk_G(void *arg){
     int val;
     while(1){
-        sem_getvalue(&input, &val)
-        if(digitalRead(SW_G) == 0 & sem_getvalue != 0){
+        sem_getvalue(&input, &val);
+        if(digitalRead(SW_G) == 0 & val != 0){
             digitalWrite(LED_G, 1);
             if(clk_count < level){
                 clk_arr[clk_count] = 3;
@@ -158,11 +157,11 @@ void clk_G(void){
         }
     }
 }
-void clk_W(void){
+void *clk_W(void *arg){
     int val;
     while(1){
-        sem_getvalue(&input, &val)
-        if(digitalRead(SW_R) == 0 & sem_getvalue != 0){
+        sem_getvalue(&input, &val);
+        if(digitalRead(SW_W) == 0 & val != 0){
             sem_wait(&input);
             for(int i = 0; i < level; i++){
                 if(mem[i] != clk_arr[i]){
@@ -170,6 +169,7 @@ void clk_W(void){
                     break;
                 }
             }
+	        delay(250);
             sem_post(&memory);
         }
     }
@@ -178,8 +178,8 @@ void clk_W(void){
 
 void init(void){
     if(wiringPiSetup() == -1){
-	puts("Setup Fail");
-	exit(1);
+        puts("Setup Fail");
+        exit(1);
     }
     pinMode(SW_R, INPUT);
     pinMode(SW_Y, INPUT);
@@ -189,8 +189,6 @@ void init(void){
     pinMode(LED_Y, OUTPUT);
     pinMode(LED_G, OUTPUT);
     off();
-
-
 }
 
 void off(void){
@@ -203,36 +201,38 @@ void start(void){
     int i = 0;
 
     while(i<3){
-	digitalWrite(LED_R, 1);
-	delay(250);
-	digitalWrite(LED_R, 0);
-	
-	digitalWrite(LED_Y, 1);
-	delay(250);
-	digitalWrite(LED_Y, 0);
-	
-	digitalWrite(LED_G, 1);
-	delay(250);
-	digitalWrite(LED_G, 0);
+        digitalWrite(LED_R, 1);
+        delay(250);
+        digitalWrite(LED_R, 0);
+        
+        digitalWrite(LED_Y, 1);
+        delay(250);
+        digitalWrite(LED_Y, 0);
+        
+        digitalWrite(LED_G, 1);
+        delay(250);
+        digitalWrite(LED_G, 0);
 
-	i++;
+	    i++;
     }
+
+    delay(500);
 }
 
 void fail(void){
-    int i = 0;
+    int f = 0;
 
-    while(i<3){
-	digitalWrite(LED_R, 1);
-    digitalWrite(LED_Y, 1);
-    digitalWrite(LED_G, 1);
+    while(f<3){
+        digitalWrite(LED_R, 1);
+        digitalWrite(LED_Y, 1);
+        digitalWrite(LED_G, 1);
 
-	delay(250);
+        delay(250);
 
-	digitalWrite(LED_R, 0);
-	digitalWrite(LED_Y, 0);
-	digitalWrite(LED_G, 0);
-
-	i++;
+        digitalWrite(LED_R, 0);
+        digitalWrite(LED_Y, 0);
+        digitalWrite(LED_G, 0);
+        delay(250);
+	    f++;
     }
 }
